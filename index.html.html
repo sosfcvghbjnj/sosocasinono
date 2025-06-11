@@ -1,0 +1,221 @@
+index.html<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini Casino Gratuit</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #ffcc00;
+    }
+    .game {
+      background: #222;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px auto;
+      max-width: 500px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      background: #ffcc00;
+      color: #000;
+      border-radius: 5px;
+      margin: 5px;
+    }
+    input {
+      padding: 5px;
+      margin: 5px;
+    }
+    .chat {
+      background: #333;
+      max-height: 200px;
+      overflow-y: auto;
+      text-align: left;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 5px;
+    }
+    .chat p {
+      margin: 5px 0;
+    }
+    #slots {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      min-height: 40px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎰 Mini Casino Gratuit</h1>
+
+  <div class="game">
+    <h2>Connexion</h2>
+    <input type="text" id="username" placeholder="Entrez votre pseudo" />
+    <button onclick="login()">Se connecter</button>
+    <p id="user-info"></p>
+  </div>
+
+  <div class="game" id="admin-panel" style="display: none;">
+    <h2>👑 Panneau Admin</h2>
+    <input type="text" id="target-user" placeholder="Pseudo du joueur" />
+    <input type="number" id="amount" placeholder="Montant à ajouter" />
+    <button onclick="addMoney()">Ajouter de l'argent</button>
+    <p id="admin-msg"></p>
+  </div>
+
+  <div class="game" id="balance-panel" style="display: none;">
+    <h2>💰 Solde : <span id="balance">0</span> crédits</h2>
+  </div>
+
+  <!-- Machine à sous -->
+  <div class="game">
+    <h2>🎰 Machine à sous</h2>
+    <div id="slots">🍒 🍋 🍊</div>
+    <button onclick="playSlots()" id="slot-btn">Lancer</button>
+    <p id="slot-result"></p>
+  </div>
+
+  <!-- Blackjack -->
+  <div class="game">
+    <h2>🃏 Blackjack</h2>
+    <p id="blackjack-status"></p>
+    <button onclick="startBlackjack()">Nouvelle partie</button>
+    <div id="blackjack-game" style="display: none;">
+      <p id="blackjack-player"></p>
+      <p id="blackjack-dealer"></p>
+      <button onclick="hit()">Tirer</button>
+      <button onclick="stand()">Rester</button>
+    </div>
+  </div>
+
+  <!-- Zone de Chat -->
+  <div class="game">
+    <h2>💬 Chat</h2>
+    <div class="chat" id="chat-box"></div>
+    <input type="text" id="chat-input" placeholder="Tape ton message" />
+    <button onclick="sendMessage()">Envoyer</button>
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    function login() {
+      const name = document.getElementById("username").value.trim();
+      if (!name) return alert("Entrez un pseudo.");
+      currentUser = name;
+
+      if (!localStorage.getItem(name)) {
+        localStorage.setItem(name, JSON.stringify({ balance: 0, chat: [] }));
+      }
+
+      document.getElementById("user-info").textContent = `Connecté en tant que : ${name}`;
+      document.getElementById("balance-panel").style.display = "block";
+      updateBalance();
+      loadChat();
+
+      // Affiche le panneau admin uniquement si le pseudo est "sosoverse07"
+      if (name.toLowerCase() === "sosoverse07") {
+        document.getElementById("admin-panel").style.display = "block";
+      } else {
+        document.getElementById("admin-panel").style.display = "none";
+      }
+    }
+
+    function getUserData(name) {
+      return JSON.parse(localStorage.getItem(name));
+    }
+
+    function updateUserData(name, data) {
+      localStorage.setItem(name, JSON.stringify(data));
+    }
+
+    function updateBalance() {
+      const data = getUserData(currentUser);
+      document.getElementById("balance").textContent = data.balance;
+    }
+
+    function addMoney() {
+      const target = document.getElementById("target-user").value.trim();
+      const amount = parseInt(document.getElementById("amount").value);
+      if (!localStorage.getItem(target)) return alert("Utilisateur non trouvé.");
+      const data = getUserData(target);
+      data.balance += amount;
+      updateUserData(target, data);
+      document.getElementById("admin-msg").textContent = `${amount} crédits ajoutés à ${target}`;
+      if (target === currentUser) updateBalance();
+    }
+
+    function playSlots() {
+      let data = getUserData(currentUser);
+      if (data.balance <= 0) {
+        document.getElementById("slot-result").textContent = "Pas assez de crédits !";
+        return;
+      }
+
+      data.balance -= 1;
+      updateUserData(currentUser, data);
+      updateBalance();
+
+      const symbols = ["🍒", "🍋", "🍊", "💎", "🔔"];
+      let display = document.getElementById("slots");
+      let resultText = document.getElementById("slot-result");
+
+      let spin = 0;
+      let interval = setInterval(() => {
+        display.textContent = Array(3).fill().map(() => symbols[Math.floor(Math.random() * symbols.length)]).join(" ");
+        spin++;
+        if (spin > 25) {
+          clearInterval(interval);
+          const final = display.textContent.split(" ");
+          if (final[0] === final[1] && final[1] === final[2] && Math.random() < 0.4) {
+            data.balance += 5;
+            updateUserData(currentUser, data);
+            updateBalance();
+            resultText.textContent = "Jackpot ! +5 crédits";
+          } else {
+            resultText.textContent = "Perdu...";
+          }
+        }
+      }, 200);
+    }
+
+    function sendMessage() {
+      const input = document.getElementById("chat-input");
+      const msg = input.value.trim();
+      if (!msg) return;
+      const data = getUserData(currentUser);
+      data.chat.push(`${currentUser} : ${msg}`);
+      updateUserData(currentUser, data);
+      input.value = "";
+      loadChat();
+    }
+
+    function loadChat() {
+      const data = getUserData(currentUser);
+      const box = document.getElementById("chat-box");
+      box.innerHTML = data.chat.map(m => `<p>${m}</p>`).join("");
+    }
+
+    // Blackjack functions (optional)
+    function startBlackjack() {
+      alert("Fonction Blackjack non encore implémentée.");
+    }
+    function hit() {
+      alert("Fonction Blackjack non encore implémentée.");
+    }
+    function stand() {
+      alert("Fonction Blackjack non encore implémentée.");
+    }
+  </script>
+</body>
+</html>
